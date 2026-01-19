@@ -10,3 +10,4 @@ export async function getDb() {
 }
 
 export * from "./schema";
+export * from "../modules/pages/schemas/page.schema";
