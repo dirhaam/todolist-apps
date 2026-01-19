@@ -36,6 +36,9 @@ export async function updatePageContentAction(id: number, content: PageSlide[], 
 
     if (updatedPage) {
         revalidatePath(`/${updatedPage.slug}`);
+        if (updatedPage.slug === "home") {
+            revalidatePath("/");
+        }
     }
 }
 

@@ -47,17 +47,25 @@ const features = [
     },
 ];
 
-export function Features() {
+export interface FeaturesProps {
+    title?: string;
+    description?: string;
+}
+
+export function Features({
+    title = "Everything you need for perfect invites",
+    description = "We provide all the tools you need to create, manage, and share your digital invitations."
+}: FeaturesProps) {
     return (
         <section id="features" className="py-24 bg-gray-50">
             <div className="container mx-auto px-4">
                 <div className="text-center mb-16">
                     <h2 className="text-base font-semibold text-purple-600 uppercase tracking-wide">features</h2>
                     <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-                        Everything you need for perfect invites
+                        {title}
                     </p>
                     <p className="mt-4 max-w-2xl text-xl text-gray-500 mx-auto">
-                        We provide all the tools you need to create, manage, and share your digital invitations.
+                        {description}
                     </p>
                 </div>
 

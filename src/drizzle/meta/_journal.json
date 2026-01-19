@@ -29,6 +29,13 @@
       "when": 1768797442268,
       "tag": "0003_closed_tigra",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1768813619034,
+      "tag": "0004_sparkling_mantis",
+      "breakpoints": true
     }
   ]
 }

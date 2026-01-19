@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Save, Eye, Settings, GripVertical, ChevronLeft, Laptop, Tablet, Smartphone, Box, Type, Image as ImageIcon, LayoutTemplate, Layers, Video, Map, Minus, GripHorizontal, Timer, ClipboardList, Images, UploadCloud } from "lucide-react";
+import { Type, Image as ImageIcon, Box, Video, Map, Minus, GripHorizontal, Timer, ClipboardList, Images, Star, List, Grid, Layout, MessageCircle, Save, Trash2, Plus, UploadCloud, Laptop, Tablet, Smartphone, X, ChevronDown, ChevronRight, LayoutTemplate } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,7 +40,22 @@ export default function PageBuilder({ page }: PageBuilderProps) {
 
     // Derived
     const currentSlide = slides.find(s => s.id === currentSlideId) || null;
-    const selectedElement = currentSlide?.elements.find(e => e.id === selectedElementId) || null;
+    
+    // Helper: Find element recursively at any nesting level
+    const findElementById = (elements: PageElement[], id: string): PageElement | null => {
+        for (const el of elements) {
+            if (el.id === id) return el;
+            if (el.elements) {
+                const found = findElementById(el.elements, id);
+                if (found) return found;
+            }
+        }
+        return null;
+    };
+    
+    const selectedElement = currentSlide && selectedElementId 
+        ? findElementById(currentSlide.elements, selectedElementId)
+        : null;
 
     // --- ACTIONS: SLIDES ---
 
@@ -91,20 +106,38 @@ export default function PageBuilder({ page }: PageBuilderProps) {
 
     const updateElementProps = (elementId: string, props: Record<string, any>) => {
         if (!currentSlide) return;
-        const updatedElements = currentSlide.elements.map(e =>
-            e.id === elementId ? { ...e, props: { ...e.props, ...props } } : e
-        );
+        
+        const updateElementRecursively = (elements: PageElement[]): PageElement[] => {
+            return elements.map(e => {
+                if (e.id === elementId) {
+                    return { ...e, props: { ...e.props, ...props } };
+                }
+                if (e.elements) {
+                    return { ...e, elements: updateElementRecursively(e.elements) };
+                }
+                return e;
+            });
+        };
 
         setSlides(slides.map(s =>
-            s.id === currentSlide.id ? { ...currentSlide, elements: updatedElements } : s
+            s.id === currentSlide.id ? { ...currentSlide, elements: updateElementRecursively(currentSlide.elements) } : s
         ));
     };
 
     const deleteElement = (elementId: string) => {
         if (!currentSlide) return;
-        const updatedElements = currentSlide.elements.filter(e => e.id !== elementId);
+        
+        const deleteElementRecursively = (elements: PageElement[]): PageElement[] => {
+            return elements
+                .filter(e => e.id !== elementId)
+                .map(e => ({
+                    ...e,
+                    elements: e.elements ? deleteElementRecursively(e.elements) : undefined
+                }));
+        };
+
         setSlides(slides.map(s =>
-            s.id === currentSlide.id ? { ...currentSlide, elements: updatedElements } : s
+            s.id === currentSlide.id ? { ...currentSlide, elements: deleteElementRecursively(currentSlide.elements) } : s
         ));
         setSelectedElementId(null);
     };
@@ -160,6 +193,7 @@ export default function PageBuilder({ page }: PageBuilderProps) {
     const savePage = async () => {
         setIsSaving(true);
         try {
+            console.log('DEBUG: Saving slides:', JSON.stringify(slides, null, 2));
             await updatePageContentAction(page.id, slides, isPublished, customFonts);
             toast.success("Page saved successfully!");
         } catch (error) {
@@ -234,14 +268,13 @@ export default function PageBuilder({ page }: PageBuilderProps) {
                         </div>
                         <div className="flex-1 overflow-y-auto p-2 space-y-1">
                             {currentSlide.elements.map((el) => (
-                                <div
-                                    key={el.id}
-                                    onClick={() => setSelectedElementId(el.id)}
-                                    className={`p-2 rounded text-xs flex items-center gap-2 cursor-pointer ${selectedElementId === el.id ? 'bg-purple-100 text-purple-700 font-medium' : 'hover:bg-gray-50'}`}
-                                >
-                                    {getIconForType(el.type)}
-                                    <span className="capitalize">{el.type}</span>
-                                </div>
+                                <ElementLayer 
+                                    key={el.id} 
+                                    element={el} 
+                                    selectedElementId={selectedElementId}
+                                    onSelect={setSelectedElementId}
+                                    level={0}
+                                />
                             ))}
                             {currentSlide.elements.length === 0 && (
                                 <p className="text-xs text-center text-gray-400 py-4">No elements in this slide</p>
@@ -288,8 +321,14 @@ export default function PageBuilder({ page }: PageBuilderProps) {
                             <Button variant="ghost" size="sm" onClick={() => addElement('rsvp')} disabled={!currentSlide} title="RSVP">
                                 <ClipboardList className="w-4 h-4" />
                             </Button>
+                            <Button variant="ghost" size="sm" onClick={() => addElement('guestbook')} disabled={!currentSlide} title="Guestbook/Comments">
+                                <MessageCircle className="w-4 h-4" />
+                            </Button>
                             <Button variant="ghost" size="sm" onClick={() => addElement('gallery')} disabled={!currentSlide} title="Gallery">
                                 <Images className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => addElement('container')} disabled={!currentSlide} title="Container/Block">
+                                <Box className="w-4 h-4" />
                             </Button>
                         </div>
                     </div>
@@ -361,6 +400,24 @@ export default function PageBuilder({ page }: PageBuilderProps) {
                         <ElementEditor
                             element={selectedElement}
                             onChange={props => updateElementProps(selectedElement.id, props)}
+                            onAddChildElement={(newElement) => {
+                                // Add child to container's elements array
+                                if (!currentSlide) return;
+                                const addChildRecursively = (elements: PageElement[]): PageElement[] => {
+                                    return elements.map(el => {
+                                        if (el.id === selectedElement.id) {
+                                            return { ...el, elements: [...(el.elements || []), newElement] };
+                                        }
+                                        if (el.elements) {
+                                            return { ...el, elements: addChildRecursively(el.elements) };
+                                        }
+                                        return el;
+                                    });
+                                };
+                                setSlides(slides.map(s =>
+                                    s.id === currentSlide.id ? { ...currentSlide, elements: addChildRecursively(currentSlide.elements) } : s
+                                ));
+                            }}
                             customFonts={customFonts}
                             onUploadFont={handleUploadFont}
                         />
@@ -380,6 +437,45 @@ export default function PageBuilder({ page }: PageBuilderProps) {
                                 <Input type="color" className="w-10 p-1" value={currentSlide.background} onChange={e => updateSlideProp(currentSlide.id, 'background', e.target.value)} />
                                 <Input value={currentSlide.background} onChange={e => updateSlideProp(currentSlide.id, 'background', e.target.value)} />
                             </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Slide Transition</Label>
+                            <select 
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                value={currentSlide.transition || 'none'}
+                                onChange={e => updateSlideProp(currentSlide.id, 'transition', e.target.value)}
+                            >
+                                <option value="none">None</option>
+                                <option value="fade">Fade</option>
+                                <option value="slide-left">Slide Left</option>
+                                <option value="slide-right">Slide Right</option>
+                                <option value="zoom">Zoom</option>
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Transition Duration</Label>
+                            <select 
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                value={currentSlide.transitionDuration || '0.8s'}
+                                onChange={e => updateSlideProp(currentSlide.id, 'transitionDuration', e.target.value)}
+                            >
+                                <option value="0.3s">0.3s (Cepat)</option>
+                                <option value="0.5s">0.5s</option>
+                                <option value="0.8s">0.8s (Default)</option>
+                                <option value="1s">1s</option>
+                                <option value="1.5s">1.5s</option>
+                                <option value="2s">2s (Lambat)</option>
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Custom Script (JavaScript)</Label>
+                            <textarea
+                                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                placeholder="console.log('Slide loaded');"
+                                value={currentSlide.script || ''}
+                                onChange={e => updateSlideProp(currentSlide.id, 'script', e.target.value)}
+                            />
+                            <p className="text-xs text-gray-500">Script akan dijalankan saat slide di-load</p>
                         </div>
                     </div>
                 ) : (
@@ -403,7 +499,9 @@ function getIconForType(type: ElementType) {
         case 'spacer': return <GripHorizontal className="w-3 h-3" />;
         case 'countdown': return <Timer className="w-3 h-3" />;
         case 'rsvp': return <ClipboardList className="w-3 h-3" />;
+        case 'guestbook': return <MessageCircle className="w-3 h-3" />;
         case 'gallery': return <Images className="w-3 h-3" />;
+        case 'container': return <Box className="w-3 h-3" />;
         default: return <LayoutTemplate className="w-3 h-3" />;
     }
 }
@@ -418,8 +516,13 @@ function getDefaultProps(type: ElementType) {
         case 'divider': return { color: "#e5e7eb", width: "100%", style: "solid", thickness: "1px" };
         case 'spacer': return { height: "50px" };
         case 'countdown': return { targetDate: "2025-12-31T23:59", color: "#000000", bgColor: "#f3f4f6" };
-        case 'rsvp': return { title: "Will you attend?", description: "Please let us know if you can make it." };
-        case 'gallery': return { images: "https://placehold.co/400x400\nhttps://placehold.co/400x400\nhttps://placehold.co/400x400" };
+        case 'rsvp':
+            return { title: 'RSVP', description: 'Please let us know if you will attend' };
+        case 'guestbook':
+            return { title: 'Guestbook', description: 'Leave a message for us!' };
+        case 'gallery':
+            return { images: "https://placehold.co/400x400\nhttps://placehold.co/400x400\nhttps://placehold.co/400x400" };
+        case 'container': return { layout: 'horizontal', gap: '16px', width: '100%', justify: 'start', align: 'start', wrap: false };
         default: return {};
     }
 }
@@ -535,6 +638,38 @@ function ElementRenderer({ element }: { element: PageElement }) {
                             </div>
                         ))}
                         {images.length === 0 && <div className="col-span-3 text-center text-xs text-gray-400 py-4">No images added</div>}
+                    </div>
+                );
+            case 'container':
+                const containerLayoutStyle: React.CSSProperties = element.props.layout === 'grid'
+                    ? {
+                        display: 'grid',
+                        gridTemplateColumns: `repeat(${element.props.columns || 2}, 1fr)`,
+                        gap: element.props.gap || '16px'
+                    }
+                    : {
+                        display: 'flex',
+                        flexDirection: (element.props.layout === 'vertical' ? 'column' : 'row') as 'row' | 'column',
+                        gap: element.props.gap || '16px',
+                        justifyContent: element.props.justify || 'flex-start',
+                        alignItems: element.props.align || 'flex-start',
+                        flexWrap: (element.props.wrap ? 'wrap' : 'nowrap') as 'wrap' | 'nowrap'
+                    };
+
+                return (
+                    <div 
+                        className="border-2 border-dashed border-blue-300 p-4 rounded min-h-[100px] bg-blue-50/30"
+                        style={{ ...containerLayoutStyle, width: element.props.width || '100%' }}
+                    >
+                        {element.elements && element.elements.length > 0 ? (
+                            element.elements.map(child => (
+                                <div key={child.id} className="border border-gray-200 p-2 rounded bg-white">
+                                    <ElementRenderer element={child} />
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-gray-400 text-sm text-center py-4">Empty Container - Add elements using button below</p>
+                        )}
                     </div>
                 );
             default:
@@ -709,9 +844,10 @@ function CommonStyleEditor({ props, onChange, customFonts = [], onUploadFont, on
     );
 }
 
-function ElementEditor({ element, onChange, customFonts, onUploadFont }: {
+function ElementEditor({ element, onChange, onAddChildElement, customFonts, onUploadFont }: {
     element: PageElement,
     onChange: (p: any) => void,
+    onAddChildElement?: (newElement: PageElement) => void,
     customFonts: { name: string, url: string }[],
     onUploadFont: (e: React.ChangeEvent<HTMLInputElement>) => void
 }) {
@@ -894,6 +1030,68 @@ function ElementEditor({ element, onChange, customFonts, onUploadFont }: {
                         />
                     </div>
                 );
+            case 'container':
+                return (
+                    <>
+                        <div className="space-y-1">
+                            <Label>Layout Type</Label>
+                            <SelectWrapper value={element.props.layout || 'horizontal'} onChange={v => handleChange('layout', v)} options={['horizontal', 'vertical', 'grid']} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                                <Label>Gap</Label>
+                                <SelectWrapper value={element.props.gap || '16px'} onChange={v => handleChange('gap', v)} options={['0px', '8px', '16px', '24px', '32px']} />
+                            </div>
+                            <div className="space-y-1">
+                                <Label>Width</Label>
+                                <SelectWrapper value={element.props.width || '100%'} onChange={v => handleChange('width', v)} options={['25%', '50%', '75%', '100%', 'auto']} />
+                            </div>
+                        </div>
+                        <div className="space-y-2 pt-2 border-t">
+                            <Label className="text-xs font-semibold">Container Elements</Label>
+                            <div className="flex gap-2">
+                                <select 
+                                    className="flex-1 border rounded p-2 text-sm"
+                                    id="containerElementType"
+                                    defaultValue=""
+                                >
+                                    <option value="" disabled>Select element type...</option>
+                                    <option value="text">Text</option>
+                                    <option value="image">Image</option>
+                                    <option value="button">Button</option>
+                                    <option value="divider">Divider</option>
+                                    <option value="spacer">Spacer</option>
+                                </select>
+                                <Button 
+                                    size="sm"
+                                    onClick={() => {
+                                        const select = document.getElementById('containerElementType') as HTMLSelectElement | null;
+                                        const elementType = select?.value as ElementType;
+                                        if (elementType && onAddChildElement) {
+                                            const newElement: PageElement = {
+                                                id: crypto.randomUUID(),
+                                                type: elementType,
+                                                props: getDefaultProps(elementType)
+                                            };
+                                            
+                                            onAddChildElement(newElement);
+                                            
+                                            if (select) select.value = '';
+                                        }
+                                    }}
+                                >
+                                    Add
+                                </Button>
+                            </div>
+                            {element.elements && element.elements.length > 0 && (
+                                <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
+                                    {element.elements.length} element(s) inside container
+                                </div>
+                            )}
+                        </div>
+                        <p className="text-xs text-gray-500 italic">Container feature is basic. Full nested management coming soon.</p>
+                    </>
+                );
             default: return null;
         }
     };
@@ -911,5 +1109,49 @@ function SelectWrapper({ value, onChange, options }: { value: string, onChange: 
         <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" value={value} onChange={e => onChange(e.target.value)}>
             {options.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
+    );
+}
+
+function ElementLayer({ element, selectedElementId, onSelect, level }: { element: PageElement, selectedElementId: string | null, onSelect: (id: string) => void, level: number }) {
+    const [isExpanded, setIsExpanded] = useState(true);
+    const hasChildren = element.elements && element.elements.length > 0;
+    
+    return (
+        <div>
+            <div
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onSelect(element.id);
+                }}
+                className={`p-2 rounded text-xs flex items-center gap-2 cursor-pointer ${selectedElementId === element.id ? 'bg-purple-100 text-purple-700 font-medium' : 'hover:bg-gray-50'}`}
+                style={{ marginLeft: `${level * 16}px` }}
+            >
+                {hasChildren && (
+                    <button 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsExpanded(!isExpanded);
+                        }}
+                        className="w-4 h-4 flex items-center justify-center hover:bg-gray-200 rounded"
+                    >
+                        {isExpanded ? '▼' : '▶'}
+                    </button>
+                )}
+                {!hasChildren && <span className="w-4" />}
+                {getIconForType(element.type)}
+                <span className="capitalize">{element.type}</span>
+                {hasChildren && <span className="text-gray-400">({element.elements.length})</span>}
+            </div>
+            
+            {hasChildren && isExpanded && element.elements!.map(child => (
+                <ElementLayer
+                    key={child.id}
+                    element={child}
+                    selectedElementId={selectedElementId}
+                    onSelect={onSelect}
+                    level={level + 1}
+                />
+            ))}
+        </div>
     );
 }

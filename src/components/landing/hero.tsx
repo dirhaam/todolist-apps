@@ -4,7 +4,23 @@ import { ArrowRight, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
-export function Hero() {
+export interface HeroProps {
+    title?: string;
+    subtitle?: string;
+    ctaText?: string;
+    ctaLink?: string;
+    secondaryCtaText?: string;
+    secondaryCtaLink?: string;
+}
+
+export function Hero({
+    title = "Create Unforgettable Digital Moments",
+    subtitle = "Craft beautiful, responsive digital invitations for weddings, birthdays, and corporate events in minutes. Share the joy with style.",
+    ctaText = "Create Invitation",
+    ctaLink = "/dashboard",
+    secondaryCtaText = "View Templates",
+    secondaryCtaLink = "#templates"
+}: HeroProps) {
     return (
         <section className="relative overflow-hidden bg-white pt-16 pb-32 md:pt-24 md:pb-48">
             <div className="container mx-auto px-4 text-center relative z-10">
@@ -13,23 +29,26 @@ export function Hero() {
                     <span>The Future of Digital Invitations</span>
                 </div>
                 <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-gray-900 mb-6 bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 pb-2">
-                    Create Unforgettable <br />
-                    <span className="text-purple-600">Digital Moments</span>
+                    {title.includes("Digital Moments") ? (
+                         <>
+                            Create Unforgettable <br />
+                            <span className="text-purple-600">Digital Moments</span>
+                         </>
+                    ) : title}
                 </h1>
                 <p className="mt-4 text-xl text-gray-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-                    Craft beautiful, responsive digital invitations for weddings, birthdays,
-                    and corporate events in minutes. Share the joy with style.
+                    {subtitle}
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center gap-4">
-                    <Link href="/dashboard">
+                    <Link href={ctaLink}>
                         <Button size="lg" className="w-full sm:w-auto text-lg h-12 px-8 rounded-full bg-purple-600 hover:bg-purple-700">
-                            Create Invitation
+                            {ctaText}
                             <ArrowRight className="ml-2 h-5 w-5" />
                         </Button>
                     </Link>
-                    <Link href="#templates">
+                    <Link href={secondaryCtaLink}>
                         <Button variant="outline" size="lg" className="w-full sm:w-auto text-lg h-12 px-8 rounded-full border-gray-300">
-                            View Templates
+                            {secondaryCtaText}
                         </Button>
                     </Link>
                 </div>

@@ -1,4 +1,14 @@
-export function Footer() {
+export interface FooterProps {
+    appName?: string;
+    description?: string;
+    copyrightText?: string;
+}
+
+export function Footer({
+    appName = "DigiInvite",
+    description = "Creating beautiful moments in the digital world. The best platform for your invitation needs.",
+    copyrightText = `© ${new Date().getFullYear()} DigiInvite. All rights reserved.`
+}: FooterProps) {
     return (
         <footer className="bg-gray-900 text-gray-300 py-12">
             <div className="container mx-auto px-4">
@@ -6,12 +16,12 @@ export function Footer() {
                     <div className="col-span-1 md:col-span-1">
                         <div className="flex items-center space-x-2 mb-4">
                             <div className="w-6 h-6 bg-purple-500 rounded flex items-center justify-center">
-                                <span className="text-white font-bold text-sm">D</span>
+                                <span className="text-white font-bold text-sm">{appName.charAt(0)}</span>
                             </div>
-                            <span className="font-bold text-lg text-white">DigiInvite</span>
+                            <span className="font-bold text-lg text-white">{appName}</span>
                         </div>
                         <p className="text-gray-400 text-sm leading-relaxed">
-                            Creating beautiful moments in the digital world. The best platform for your invitation needs.
+                            {description}
                         </p>
                     </div>
 
@@ -43,7 +53,7 @@ export function Footer() {
                 </div>
 
                 <div className="border-t border-gray-800 pt-8 text-center text-sm text-gray-500">
-                    &copy; {new Date().getFullYear()} DigiInvite. All rights reserved.
+                    {copyrightText}
                 </div>
             </div>
         </footer>

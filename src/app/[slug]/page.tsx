@@ -1,3 +1,4 @@
+import { Guestbook } from "@/modules/guestbook/components/Guestbook";
 import { notFound } from "next/navigation";
 import { getPageBySlug as getPage } from "@/modules/pages/actions/page.actions";
 import { Button } from "@/components/ui/button";
@@ -51,19 +52,53 @@ export default async function DynamicPage({
     return (
         <div className="min-h-screen bg-gray-50">
             <Fonts customFonts={page.fonts || []} />
-            {slides.map(slide => (
-                <section
-                    key={slide.id}
-                    className="min-h-screen w-full flex flex-col justify-center items-center relative py-12 px-4"
-                    style={{ backgroundColor: slide.background || '#fff' }}
-                >
-                    <div className="w-full max-w-4xl mx-auto flex flex-col gap-6">
-                        {(slide.elements || []).map(element => (
-                            <ElementRenderer key={element.id} element={element} pageId={page.id} />
-                        ))}
-                    </div>
-                </section>
-            ))}
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                @keyframes slideInLeft {
+                    from { transform: translateX(-100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideInRight {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes zoomIn {
+                    from { transform: scale(0.8); opacity: 0; }
+                    to { transform: scale(1); opacity: 1; }
+                }
+                .transition-fade { animation: fadeIn 0.8s ease-out; }
+                .transition-slide-left { animation: slideInLeft 0.8s ease-out; }
+                .transition-slide-right { animation: slideInRight 0.8s ease-out; }
+                .transition-zoom { animation: zoomIn 0.8s ease-out; }
+                `
+            }} />
+            {slides.map(slide => {
+                const transitionClass = slide.transition && slide.transition !== 'none' 
+                    ? `transition-${slide.transition}` 
+                    : '';
+                const duration = slide.transitionDuration || '0.8s';
+                
+                return (
+                    <section
+                        key={slide.id}
+                        className={`min-h-screen w-full flex flex-col justify-center items-center relative py-12 px-4 ${transitionClass}`}
+                        style={{ 
+                            backgroundColor: slide.background || '#fff',
+                            animationDuration: duration
+                        }}
+                    >
+                        <div className="w-full max-w-4xl mx-auto flex flex-col gap-6">
+                            {(slide.elements || []).map(element => (
+                                <ElementRenderer key={element.id} element={element} pageId={page.id} />
+                            ))}
+                        </div>
+                    </section>
+                );
+            })}
         </div>
     );
 }
@@ -152,10 +187,40 @@ function ElementRenderer({ element, pageId }: { element: PageElement, pageId: nu
                         <RsvpForm title={element.props.title} description={element.props.description} pageId={pageId} />
                     </div>
                 );
+            case 'guestbook':
+                return (
+                    <div className="w-full">
+                        <Guestbook title={element.props.title} description={element.props.description} pageId={pageId} />
+                    </div>
+                );
             case 'gallery':
                 return (
                     <div className="w-full">
                         <Gallery images={(element.props.images || "").split('\n')} />
+                    </div>
+                );
+            case 'container':
+                console.log('CONTAINER RENDERING:', element);
+                console.log('Container has elements:', element.elements);
+                const layoutStyle: React.CSSProperties = element.props.layout === 'grid'
+                    ? {
+                        display: 'grid',
+                        gridTemplateColumns: `repeat(${element.props.columns || 2}, 1fr)`,
+                        gap: element.props.gap || '16px'
+                    }
+                    : {
+                        display: 'flex',
+                        flexDirection: (element.props.layout === 'vertical' ? 'column' : 'row') as 'row' | 'column',
+                        gap: element.props.gap || '16px',
+                        justifyContent: element.props.justify || 'flex-start',
+                        alignItems: element.props.align || 'flex-start',
+                        flexWrap: (element.props.wrap ? 'wrap' : 'nowrap') as 'wrap' | 'nowrap'
+                    };
+                return (
+                    <div style={{ ...layoutStyle, width: element.props.width || '100%' }}>
+                        {element.elements && element.elements.map(child => (
+                            <ElementRenderer key={child.id} element={child} pageId={pageId} />
+                        ))}
                     </div>
                 );
             default:

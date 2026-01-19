@@ -3,12 +3,13 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // New Hierarchy: Page -> Slides[] -> Elements[]
-export type ElementType = "text" | "image" | "button" | "divider" | "video" | "map" | "spacer" | "countdown" | "rsvp" | "gallery";
+export type ElementType = "text" | "image" | "button" | "divider" | "video" | "map" | "spacer" | "countdown" | "rsvp" | "guestbook" | "gallery" | "hero" | "features" | "templates" | "footer" | "container";
 
 export interface PageElement {
     id: string;
     type: ElementType;
     props: Record<string, any>;
+    elements?: PageElement[]; // For container elements with nested children
 }
 
 export type CustomFont = {
@@ -21,6 +22,9 @@ export interface PageSlide {
     name: string; // e.g., "Cover", "Date", "Gallery"
     elements: PageElement[];
     background?: string; // hex color or image url
+    transition?: 'none' | 'fade' | 'slide-left' | 'slide-right' | 'zoom';
+    transitionDuration?: string;
+    script?: string; // Custom JS for this slide
 }
 
 export const pages = sqliteTable("pages", {

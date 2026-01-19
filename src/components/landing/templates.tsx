@@ -36,17 +36,25 @@ const templates = [
     },
 ];
 
-export function Templates() {
+export interface TemplatesProps {
+    title?: string;
+    description?: string;
+}
+
+export function Templates({
+    title = "Stunning Templates",
+    description = "Start with a professionally designed template and customize it to make it yours."
+}: TemplatesProps) {
     return (
         <section id="templates" className="py-24 bg-white">
             <div className="container mx-auto px-4">
                 <div className="flex flex-col md:flex-row justify-between items-end mb-12">
                     <div className="max-w-2xl">
                         <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl mb-4">
-                            Stunning Templates
+                            {title}
                         </h2>
                         <p className="text-lg text-gray-500">
-                            Start with a professionally designed template and customize it to make it yours.
+                            {description}
                         </p>
                     </div>
                     <Link href="/dashboard" className="hidden md:block">

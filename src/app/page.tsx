@@ -1,19 +1,20 @@
-import { Features } from "@/components/landing/features";
-import { Footer } from "@/components/landing/footer";
-import { Header } from "@/components/landing/header";
-import { Hero } from "@/components/landing/hero";
-import { Templates } from "@/components/landing/templates";
+import { LandingPage } from "@/modules/pages/components/landing-page";
+import PageRenderer from "@/modules/pages/components/page-renderer";
+import { getDb } from "@/db";
+import { pages } from "@/modules/pages/schemas/page.schema";
+import { eq } from "drizzle-orm";
 
-export default function LandingPage() {
-    return (
-        <div className="min-h-screen bg-white">
-            <Header />
-            <main>
-                <Hero />
-                <Features />
-                <Templates />
-            </main>
-            <Footer />
-        </div>
-    );
+export default async function Page() {
+    const db = await getDb();
+    const existingPage = await db.query.pages.findFirst({
+        where: eq(pages.slug, "home"),
+    });
+
+    console.log("DEBUG: Existing Page:", existingPage);
+
+    if (existingPage && existingPage.isPublished) {
+         return <PageRenderer page={existingPage} />;
+    }
+
+    return <LandingPage />;
 }
