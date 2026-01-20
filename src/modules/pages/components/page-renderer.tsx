@@ -266,20 +266,14 @@ function ElementRenderer({ element }: { element: PageElement }) {
                         display: 'flex', 
                         flexDirection: (element.props.layout === 'vertical' ? 'column' : 'row') as 'row' | 'column', 
                         gap: element.props.gap || '16px', 
-                        justifyContent: element.props.justify || 'flex-start', 
-                        alignItems: element.props.align || 'flex-start', 
-                        flexWrap: (element.props.wrap ? 'wrap' : 'nowrap') as 'wrap' | 'nowrap'
+                        justifyContent: element.props.justifyContent || element.props.justify || 'flex-start', 
+                        alignItems: element.props.alignItems || element.props.align || 'flex-start', 
+                        flexWrap: (element.props.flexWrap || (element.props.wrap ? 'wrap' : 'nowrap')) as 'wrap' | 'nowrap' | 'wrap-reverse'
                     };
-                console.log('DEBUG: Container layout:', element.props.layout, 'Children count:', element.elements?.length || 0);
-                
-                if (!element.elements || !Array.isArray(element.elements)) {
-                    console.warn('DEBUG: Container has no valid elements array!');
-                }
                 
                 return (
-                    <div style={{ ...layoutStyle, width: element.props.width || '100%' }}>
+                    <div style={{ ...layoutStyle, width: '100%', height: '100%' }}>
                         {element.elements && element.elements.map((child, idx) => {
-                            console.log(`DEBUG: Rendering child ${idx}:`, child.type);
                             return <ElementRenderer key={child.id} element={child} />;
                         })}
                     </div>
@@ -292,11 +286,14 @@ function ElementRenderer({ element }: { element: PageElement }) {
     return (
         <div style={{
             ...commonStyle,
+            // Sizing override
+            width: element.props.width || '100%',
+            height: element.props.height || 'auto',
             backgroundImage: element.props.backgroundImage ? `url(${element.props.backgroundImage})` : undefined,
             backgroundSize: element.props.backgroundSize,
             backgroundPosition: element.props.backgroundPosition,
             backgroundRepeat: element.props.backgroundRepeat,
-        }} className="w-full relative overflow-hidden">
+        }} className="relative overflow-hidden">
              {/* Background Overlay */}
             {element.props.overlayColor && (
                 <div

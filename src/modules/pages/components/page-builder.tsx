@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Type, Image as ImageIcon, Box, Video, Map, Minus, GripHorizontal, Timer, ClipboardList, Images, Star, List, Grid, Layout, MessageCircle, Save, Trash2, Plus, UploadCloud, Laptop, Tablet, Smartphone, X, ChevronDown, ChevronRight, LayoutTemplate } from "lucide-react";
+import { Type, Image as ImageIcon, Box, Video, Map, Minus, GripHorizontal, Timer, ClipboardList, Images, Star, List, Grid, Layout, MessageCircle, Save, Trash2, Plus, UploadCloud, ArrowUp, ArrowDown, Laptop, Tablet, Smartphone, X, ChevronDown, ChevronRight, LayoutTemplate } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -144,19 +144,43 @@ export default function PageBuilder({ page }: PageBuilderProps) {
 
     const moveElement = (elementId: string, direction: 'up' | 'down') => {
         if (!currentSlide) return;
-        const index = currentSlide.elements.findIndex(e => e.id === elementId);
-        if (index === -1) return;
 
-        if (direction === 'up' && index === 0) return;
-        if (direction === 'down' && index === currentSlide.elements.length - 1) return;
+        const moveRecursively = (elements: PageElement[]): { found: boolean, newElements: PageElement[] } => {
+             const index = elements.findIndex(e => e.id === elementId);
+             
+             // Base case: Found in current level
+             if (index !== -1) {
+                 if (direction === 'up' && index === 0) return { found: true, newElements: elements }; // Can't move up
+                 if (direction === 'down' && index === elements.length - 1) return { found: true, newElements: elements }; // Can't move down
 
-        const newElements = [...currentSlide.elements];
-        const swapIndex = direction === 'up' ? index - 1 : index + 1;
-        [newElements[index], newElements[swapIndex]] = [newElements[swapIndex], newElements[index]];
+                 const newArr = [...elements];
+                 const swapIndex = direction === 'up' ? index - 1 : index + 1;
+                 [newArr[index], newArr[swapIndex]] = [newArr[swapIndex], newArr[index]];
+                 return { found: true, newElements: newArr };
+             }
 
-        setSlides(slides.map(s =>
-            s.id === currentSlide.id ? { ...currentSlide, elements: newElements } : s
-        ));
+             // Recursive step: Search in children
+             let foundInChild = false;
+             const newElements = elements.map(el => {
+                 if (el.elements && el.elements.length > 0) {
+                     const result = moveRecursively(el.elements);
+                     if (result.found) {
+                         foundInChild = true;
+                         return { ...el, elements: result.newElements };
+                     }
+                 }
+                 return el;
+             });
+
+             return { found: foundInChild, newElements };
+        };
+
+        const result = moveRecursively(currentSlide.elements);
+        if (result.found) {
+             setSlides(slides.map(s =>
+                s.id === currentSlide.id ? { ...currentSlide, elements: result.newElements } : s
+            ));
+        }
     };
 
     const handleUploadFont = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -394,8 +418,20 @@ export default function PageBuilder({ page }: PageBuilderProps) {
 
                 {selectedElement ? (
                     <div className="space-y-4">
-                        <div className="pb-2 border-b mb-2">
+                        <div className="pb-2 border-b mb-2 flex justify-between items-center">
                             <Label className="text-xs font-bold text-blue-500 uppercase">Edit {selectedElement.type}</Label>
+                            <div className="flex gap-1">
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-gray-500 hover:text-blue-500 hover:bg-blue-50" onClick={() => moveElement(selectedElement.id, 'up')} title="Move Up">
+                                    <ArrowUp className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-gray-500 hover:text-blue-500 hover:bg-blue-50" onClick={() => moveElement(selectedElement.id, 'down')} title="Move Down">
+                                    <ArrowDown className="w-3.5 h-3.5" />
+                                </Button>
+                                <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => deleteElement(selectedElement.id)} title="Delete Element">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                            </div>
                         </div>
                         <ElementEditor
                             element={selectedElement}
@@ -522,7 +558,7 @@ function getDefaultProps(type: ElementType) {
             return { title: 'Guestbook', description: 'Leave a message for us!' };
         case 'gallery':
             return { images: "https://placehold.co/400x400\nhttps://placehold.co/400x400\nhttps://placehold.co/400x400" };
-        case 'container': return { layout: 'horizontal', gap: '16px', width: '100%', justify: 'start', align: 'start', wrap: false };
+        case 'container': return { layout: 'horizontal', gap: '16px', width: '100%', justifyContent: 'flex-start', alignItems: 'flex-start', flexWrap: 'nowrap' };
         default: return {};
     }
 }
@@ -651,9 +687,9 @@ function ElementRenderer({ element }: { element: PageElement }) {
                         display: 'flex',
                         flexDirection: (element.props.layout === 'vertical' ? 'column' : 'row') as 'row' | 'column',
                         gap: element.props.gap || '16px',
-                        justifyContent: element.props.justify || 'flex-start',
-                        alignItems: element.props.align || 'flex-start',
-                        flexWrap: (element.props.wrap ? 'wrap' : 'nowrap') as 'wrap' | 'nowrap'
+                        justifyContent: element.props.justifyContent || element.props.justify || 'flex-start',
+                        alignItems: element.props.alignItems || element.props.align || 'flex-start',
+                        flexWrap: (element.props.flexWrap || (element.props.wrap ? 'wrap' : 'nowrap')) as 'wrap' | 'nowrap'
                     };
 
                 return (
@@ -663,7 +699,7 @@ function ElementRenderer({ element }: { element: PageElement }) {
                     >
                         {element.elements && element.elements.length > 0 ? (
                             element.elements.map(child => (
-                                <div key={child.id} className="border border-gray-200 p-2 rounded bg-white">
+                                <div key={child.id} className={`border ${element.props.layout === 'grid' ? 'border-dashed border-gray-300' : 'border-gray-200'} p-2 rounded bg-white h-full`}>
                                     <ElementRenderer element={child} />
                                 </div>
                             ))
@@ -680,12 +716,15 @@ function ElementRenderer({ element }: { element: PageElement }) {
     return (
         <div style={{
             ...commonStyle,
+            // Sizing override (removed w-full class)
+            width: element.props.width || '100%',
+            height: element.props.height || 'auto',
             // Background properties should be on this outer wrapper
             backgroundImage: element.props.backgroundImage ? `url(${element.props.backgroundImage})` : undefined,
             backgroundSize: element.props.backgroundSize,
             backgroundPosition: element.props.backgroundPosition,
             backgroundRepeat: element.props.backgroundRepeat,
-        }} className="w-full relative overflow-hidden group">
+        }} className="relative overflow-hidden group">
             {/* Background Overlay */}
             {element.props.overlayColor && (
                 <div
@@ -695,8 +734,71 @@ function ElementRenderer({ element }: { element: PageElement }) {
             )}
 
             {/* Content Wrapper - Relative to sit on top of overlay */}
-            <div className="relative z-10">
+            <div className="relative z-10 h-full">
                 {content()}
+            </div>
+        </div>
+    );
+}
+
+// --- SIZE CONTROL ---
+function SizeControl({ label, value, onChange }: { label: string, value: string, onChange: (v: string) => void }) {
+    // Parse value into number and unit
+    const parseValue = (val: string) => {
+        if (!val || val === 'auto') return { num: '', unit: 'auto' };
+        const match = val.match(/^(\d+)(.*)$/);
+        if (match) return { num: match[1], unit: match[2] || 'px' };
+        return { num: '', unit: 'px' }; // Fallback
+    };
+
+    const { num, unit } = parseValue(value);
+
+    const handleNumChange = (newNum: string) => {
+        if (unit === 'auto') onChange(`${newNum}px`); // Switch to px if typing number
+        else onChange(`${newNum}${unit}`);
+    };
+
+    const handleUnitChange = (newUnit: string) => {
+        if (newUnit === 'auto') onChange('auto');
+        else onChange(`${num || '100'}${newUnit}`);
+    };
+
+    return (
+        <div className="space-y-1">
+            <div className="flex justify-between items-center">
+                <Label className="text-[10px]">{label}</Label>
+                <div className="flex gap-1">
+                    {['px', '%', 'vh', 'auto'].map(u => (
+                        <button 
+                            key={u}
+                            onClick={() => handleUnitChange(u)}
+                            className={`text-[8px] px-1 rounded uppercase ${unit === u ? 'bg-blue-100 text-blue-700 font-bold' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            {u}
+                        </button>
+                    ))}
+                </div>
+            </div>
+            <div className="flex gap-1">
+                <Input 
+                    type="number" 
+                    className="h-8 text-xs" 
+                    placeholder={unit === 'auto' ? 'Auto' : '0'} 
+                    value={num} 
+                    disabled={unit === 'auto'}
+                    onChange={e => handleNumChange(e.target.value)} 
+                />
+                <select 
+                    className="h-8 rounded-md border border-input bg-background px-2 text-xs w-[60px]"
+                    value={unit}
+                    onChange={e => handleUnitChange(e.target.value)}
+                >
+                    <option value="px">px</option>
+                    <option value="%">%</option>
+                    <option value="vw">vw</option>
+                    <option value="vh">vh</option>
+                    <option value="auto">auto</option>
+                </select>
             </div>
         </div>
     );
@@ -836,6 +938,14 @@ function CommonStyleEditor({ props, onChange, customFonts = [], onUploadFont, on
                     <SelectWrapper value={props.marginBottom} onChange={v => onChange('marginBottom', v)} options={['0px', '4px', '8px', '16px', '24px', '32px']} />
                 </div>
             </div>
+
+            <div className="space-y-2 border-b pb-4 pt-2">
+                 <Label className="text-[10px] font-bold text-gray-500 uppercase">Sizing</Label>
+                 <div className="grid grid-cols-2 gap-2">
+                    <SizeControl label="Width" value={props.width || '100%'} onChange={v => onChange('width', v)} />
+                    <SizeControl label="Height" value={props.height || 'auto'} onChange={v => onChange('height', v)} />
+                 </div>
+            </div>
             <div className="space-y-1">
                 <Label className="text-[10px]">Rounded Corners</Label>
                 <SelectWrapper value={props.borderRadius} onChange={v => onChange('borderRadius', v)} options={['0px', '4px', '8px', '12px', '16px', '24px', '999px']} />
@@ -927,8 +1037,7 @@ function ElementEditor({ element, onChange, onAddChildElement, customFonts, onUp
                             </div>
                         </div>
                         <div className="space-y-1">
-                            <Label>Width</Label>
-                            <SelectWrapper value={element.props.width} onChange={v => handleChange('width', v)} options={['25%', '50%', '75%', '100%']} />
+                             <p className="text-xs text-gray-400">Width is now controlled in Global Styles below</p>
                         </div>
                     </>
                 );
@@ -1037,17 +1146,73 @@ function ElementEditor({ element, onChange, onAddChildElement, customFonts, onUp
                             <Label>Layout Type</Label>
                             <SelectWrapper value={element.props.layout || 'horizontal'} onChange={v => handleChange('layout', v)} options={['horizontal', 'vertical', 'grid']} />
                         </div>
+
+                        {element.props.layout === 'grid' ? (
+                            <div className="space-y-1">
+                                <Label>Columns</Label>
+                                <Input type="number" min="1" max="12" value={element.props.columns || 2} onChange={e => handleChange('columns', parseInt(e.target.value) || 1)} />
+                            </div>
+                        ) : (
+                            <div className="space-y-2 border-b pb-2 mb-2">
+                                <Label className="text-xs font-semibold text-gray-500">Flexbox Settings</Label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px]">Justify Content</Label>
+                                        <select 
+                                            className="flex h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+                                            value={element.props.justifyContent || 'flex-start'} 
+                                            onChange={e => handleChange('justifyContent', e.target.value)}
+                                        >
+                                            <option value="flex-start">Start</option>
+                                            <option value="center">Center</option>
+                                            <option value="flex-end">End</option>
+                                            <option value="space-between">Space Between</option>
+                                            <option value="space-around">Space Around</option>
+                                            <option value="space-evenly">Space Evenly</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px]">Align Items</Label>
+                                        <select 
+                                            className="flex h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+                                            value={element.props.alignItems || 'flex-start'} 
+                                            onChange={e => handleChange('alignItems', e.target.value)}
+                                        >
+                                            <option value="flex-start">Start</option>
+                                            <option value="center">Center</option>
+                                            <option value="flex-end">End</option>
+                                            <option value="stretch">Stretch</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px]">Wrap</Label>
+                                        <select 
+                                            className="flex h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+                                            value={element.props.flexWrap || 'nowrap'} 
+                                            onChange={e => handleChange('flexWrap', e.target.value)}
+                                        >
+                                            <option value="nowrap">No Wrap</option>
+                                            <option value="wrap">Wrap</option>
+                                            <option value="wrap-reverse">Wrap Reverse</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-1">
                                 <Label>Gap</Label>
-                                <SelectWrapper value={element.props.gap || '16px'} onChange={v => handleChange('gap', v)} options={['0px', '8px', '16px', '24px', '32px']} />
+                                <SelectWrapper value={element.props.gap || '16px'} onChange={v => handleChange('gap', v)} options={['0px', '4px', '8px', '16px', '24px', '32px', '48px']} />
                             </div>
                             <div className="space-y-1">
+
                                 <Label>Width</Label>
-                                <SelectWrapper value={element.props.width || '100%'} onChange={v => handleChange('width', v)} options={['25%', '50%', '75%', '100%', 'auto']} />
+                                <p className="text-xs text-gray-400">Use Global Styles below for precise width/height</p>
                             </div>
                         </div>
-                        <div className="space-y-2 pt-2 border-t">
+
+                        <div className="space-y-2 pt-2 border-t mt-2">
                             <Label className="text-xs font-semibold">Container Elements</Label>
                             <div className="flex gap-2">
                                 <select 
@@ -1061,6 +1226,7 @@ function ElementEditor({ element, onChange, onAddChildElement, customFonts, onUp
                                     <option value="button">Button</option>
                                     <option value="divider">Divider</option>
                                     <option value="spacer">Spacer</option>
+                                    <option value="container">Container (Nested)</option>
                                 </select>
                                 <Button 
                                     size="sm"
@@ -1089,7 +1255,7 @@ function ElementEditor({ element, onChange, onAddChildElement, customFonts, onUp
                                 </div>
                             )}
                         </div>
-                        <p className="text-xs text-gray-500 italic">Container feature is basic. Full nested management coming soon.</p>
+                        <p className="text-xs text-gray-500 italic">Advanced layout controls enabled.</p>
                     </>
                 );
             default: return null;
@@ -1140,7 +1306,7 @@ function ElementLayer({ element, selectedElementId, onSelect, level }: { element
                 {!hasChildren && <span className="w-4" />}
                 {getIconForType(element.type)}
                 <span className="capitalize">{element.type}</span>
-                {hasChildren && <span className="text-gray-400">({element.elements.length})</span>}
+                {hasChildren && <span className="text-gray-400">({element.elements?.length})</span>}
             </div>
             
             {hasChildren && isExpanded && element.elements!.map(child => (

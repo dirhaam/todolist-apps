@@ -200,8 +200,6 @@ function ElementRenderer({ element, pageId }: { element: PageElement, pageId: nu
                     </div>
                 );
             case 'container':
-                console.log('CONTAINER RENDERING:', element);
-                console.log('Container has elements:', element.elements);
                 const layoutStyle: React.CSSProperties = element.props.layout === 'grid'
                     ? {
                         display: 'grid',
@@ -212,12 +210,12 @@ function ElementRenderer({ element, pageId }: { element: PageElement, pageId: nu
                         display: 'flex',
                         flexDirection: (element.props.layout === 'vertical' ? 'column' : 'row') as 'row' | 'column',
                         gap: element.props.gap || '16px',
-                        justifyContent: element.props.justify || 'flex-start',
-                        alignItems: element.props.align || 'flex-start',
-                        flexWrap: (element.props.wrap ? 'wrap' : 'nowrap') as 'wrap' | 'nowrap'
+                        justifyContent: element.props.justifyContent || element.props.justify || 'flex-start',
+                        alignItems: element.props.alignItems || element.props.align || 'flex-start',
+                        flexWrap: (element.props.flexWrap || (element.props.wrap ? 'wrap' : 'nowrap')) as 'wrap' | 'nowrap' | 'wrap-reverse'
                     };
                 return (
-                    <div style={{ ...layoutStyle, width: element.props.width || '100%' }}>
+                    <div style={{ ...layoutStyle, width: '100%', height: '100%' }}>
                         {element.elements && element.elements.map(child => (
                             <ElementRenderer key={child.id} element={child} pageId={pageId} />
                         ))}
@@ -231,12 +229,15 @@ function ElementRenderer({ element, pageId }: { element: PageElement, pageId: nu
     return (
         <div style={{
             ...commonStyle,
+            // Sizing override
+            width: element.props.width || '100%',
+            height: element.props.height || 'auto',
             // Background properties should be on this outer wrapper
             backgroundImage: element.props.backgroundImage ? `url(${element.props.backgroundImage})` : undefined,
             backgroundSize: element.props.backgroundSize,
             backgroundPosition: element.props.backgroundPosition,
             backgroundRepeat: element.props.backgroundRepeat,
-        }} className="w-full relative overflow-hidden group">
+        }} className="relative overflow-hidden group">
             {/* Background Overlay */}
             {element.props.overlayColor && (
                 <div
